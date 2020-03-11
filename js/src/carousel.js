@@ -288,61 +288,61 @@ class Carousel {
     }
   }
 
+  _start(event) {
+    if (this._pointerEvent && PointerType[event.pointerType.toUpperCase()]) {
+      this.touchStartX = event.clientX
+    } else if (!this._pointerEvent) {
+      this.touchStartX = event.touches[0].clientX
+    }
+  }
+
+  _move(event) {
+    // ensure swiping with one touch and not pinching
+    if (event.touches && event.touches.length > 1) {
+      this.touchDeltaX = 0
+    } else {
+      this.touchDeltaX = event.touches[0].clientX - this.touchStartX
+    }
+  }
+
+  _end(event) {
+    if (this._pointerEvent && PointerType[event.pointerType.toUpperCase()]) {
+      this.touchDeltaX = event.clientX - this.touchStartX
+    }
+
+    this._handleSwipe()
+    if (this._config.pause === 'hover') {
+      // If it's a touch-enabled device, mouseenter/leave are fired as
+      // part of the mouse compatibility events on first tap - the carousel
+      // would stop cycling until user tapped out of it;
+      // here, we listen for touchend, explicitly pause the carousel
+      // (as if it's the second time we tap on it, mouseenter compat event
+      // is NOT fired) and after a timeout (to allow for mouse compatibility
+      // events to fire) we explicitly restart cycling
+
+      this.pause()
+      if (this.touchTimeout) {
+        clearTimeout(this.touchTimeout)
+      }
+
+      this.touchTimeout = setTimeout(event => this.cycle(event), TOUCHEVENT_COMPAT_WAIT + this._config.interval)
+    }
+  }
+
   _addTouchEventListeners() {
-    const start = event => {
-      if (this._pointerEvent && PointerType[event.pointerType.toUpperCase()]) {
-        this.touchStartX = event.clientX
-      } else if (!this._pointerEvent) {
-        this.touchStartX = event.touches[0].clientX
-      }
-    }
-
-    const move = event => {
-      // ensure swiping with one touch and not pinching
-      if (event.touches && event.touches.length > 1) {
-        this.touchDeltaX = 0
-      } else {
-        this.touchDeltaX = event.touches[0].clientX - this.touchStartX
-      }
-    }
-
-    const end = event => {
-      if (this._pointerEvent && PointerType[event.pointerType.toUpperCase()]) {
-        this.touchDeltaX = event.clientX - this.touchStartX
-      }
-
-      this._handleSwipe()
-      if (this._config.pause === 'hover') {
-        // If it's a touch-enabled device, mouseenter/leave are fired as
-        // part of the mouse compatibility events on first tap - the carousel
-        // would stop cycling until user tapped out of it;
-        // here, we listen for touchend, explicitly pause the carousel
-        // (as if it's the second time we tap on it, mouseenter compat event
-        // is NOT fired) and after a timeout (to allow for mouse compatibility
-        // events to fire) we explicitly restart cycling
-
-        this.pause()
-        if (this.touchTimeout) {
-          clearTimeout(this.touchTimeout)
-        }
-
-        this.touchTimeout = setTimeout(event => this.cycle(event), TOUCHEVENT_COMPAT_WAIT + this._config.interval)
-      }
-    }
-
     makeArray(SelectorEngine.find(Selector.ITEM_IMG, this._element)).forEach(itemImg => {
       EventHandler.on(itemImg, Event.DRAG_START, e => e.preventDefault())
     })
 
     if (this._pointerEvent) {
-      EventHandler.on(this._element, Event.POINTERDOWN, event => start(event))
-      EventHandler.on(this._element, Event.POINTERUP, event => end(event))
+      EventHandler.on(this._element, Event.POINTERDOWN, event => this._start(event))
+      EventHandler.on(this._element, Event.POINTERUP, event => this._end(event))
 
       this._element.classList.add(ClassName.POINTER_EVENT)
     } else {
-      EventHandler.on(this._element, Event.TOUCHSTART, event => start(event))
-      EventHandler.on(this._element, Event.TOUCHMOVE, event => move(event))
-      EventHandler.on(this._element, Event.TOUCHEND, event => end(event))
+      EventHandler.on(this._element, Event.TOUCHSTART, event => this._start(event))
+      EventHandler.on(this._element, Event.TOUCHMOVE, event => this._move(event))
+      EventHandler.on(this._element, Event.TOUCHEND, event => this._end(event))
     }
   }
 
